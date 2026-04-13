@@ -1,8 +1,7 @@
-# CMPE-220 Software CPU — C++ Implementation
+# CMPE-220 Software CPU — C Implementation
 
-A complete 16-bit software CPU emulator written in C++17.
-
-> **Also available:** [C port on the `c-port` branch](../../tree/c-port)
+A complete 16-bit software CPU emulator written in C99.
+This is a port of the [C++ implementation on the `main` branch](../../tree/main).
 
 ## Architecture
 
@@ -22,35 +21,52 @@ A complete 16-bit software CPU emulator written in C++17.
 ```
 software-cpu/
 ├── isa/
-│   └── isa.h           ISA definitions, opcodes, encoding
+│   └── isa.h               ISA definitions, opcodes, encoding
 ├── emulator/
-│   ├── cpu.h           CPU: registers, ALU, CU, fetch-decode-execute
-│   └── memory.h        Memory + memory-mapped I/O
+│   ├── memory.h / memory.c  Memory + memory-mapped I/O
+│   └── cpu.h    / cpu.c     CPU: registers, ALU, CU, fetch-decode-execute
 ├── assembler/
-│   └── assembler.h     Two-pass assembler
+│   ├── assembler.h          Two-pass assembler (declarations)
+│   └── assembler.c          Two-pass assembler (implementation)
 ├── programs/
-│   ├── timer.asm       Timer example
-│   └── hello.asm       Hello World
-└── main.cpp            All demos
+│   ├── timer.asm            Timer example
+│   └── hello.asm            Hello World
+└── main.c                   All demos
 ```
 
 ## Building and Running
 
 ```bash
 # Compile
-g++ -std=c++17 -I. -O2 -o software_cpu main.cpp
+make
+
+# or manually:
+gcc -std=c99 -Wall -Wextra -O2 -I. \
+    -o software_cpu_c \
+    main.c emulator/memory.c emulator/cpu.c assembler/assembler.c
 
 # Run all demos
-./software_cpu
+./software_cpu_c
 
 # Run specific demo
-./software_cpu 1    # Timer (fetch/compute/store cycles)
-./software_cpu 2    # Hello, World
-./software_cpu 3    # Fibonacci sequence
-./software_cpu 4    # Factorial (function calls)
-./software_cpu 5    # Memory layout diagram
-./software_cpu 6    # Assembler listing
+./software_cpu_c 1    # Timer (fetch/compute/store cycles)
+./software_cpu_c 2    # Hello, World
+./software_cpu_c 3    # Fibonacci sequence
+./software_cpu_c 4    # Factorial (function calls)
+./software_cpu_c 5    # Memory layout diagram
+./software_cpu_c 6    # Assembler listing
 ```
+
+## C vs C++ Differences
+
+| Concept        | C++ (main branch)         | C (this branch)                  |
+|----------------|---------------------------|----------------------------------|
+| Modules        | Header-only `.h` files    | Split `.h` declarations + `.c` implementations |
+| Classes        | `class CPU { ... }`       | `typedef struct CPU` + `cpu_init()`, `cpu_step()` |
+| Constructors   | `CPU(Memory& m)`          | `cpu_init(CPU* cpu, Memory* mem)` |
+| STL containers | `std::map`, `std::string` | Fixed-size arrays, `char*`       |
+| Standard       | C++17                     | C99                              |
+| Build          | `g++ -std=c++17`          | `gcc -std=c99`                   |
 
 ## ISA Reference
 
@@ -108,9 +124,3 @@ RESOLVE: REG→R[src] | IMM→src | DIRECT→mem[src] | INDIRECT→mem[R[src]]
 EXECUTE: ALU computes | memory accessed | PC changes
 WRITEBK: result→register | result→memory
 ```
-
-## C++ Implementation Notes
-
-- Header-only design — each module is a single `.h` file
-- Classes with constructors, operator overloading, and STL (`std::map`, `std::string`, `std::vector`)
-- Requires C++17 (`-std=c++17`)
