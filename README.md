@@ -1,6 +1,8 @@
-# CMPE-220 Software CPU
+# CMPE-220 Software CPU — C++ Implementation
 
 A complete 16-bit software CPU emulator written in C++17.
+
+> **Also available:** [C port on the `c-port` branch](../../tree/c-port)
 
 ## Architecture
 
@@ -47,6 +49,7 @@ g++ -std=c++17 -I. -O2 -o software_cpu main.cpp
 ./software_cpu 3    # Fibonacci sequence
 ./software_cpu 4    # Factorial (function calls)
 ./software_cpu 5    # Memory layout diagram
+./software_cpu 6    # Assembler listing
 ```
 
 ## ISA Reference
@@ -78,12 +81,12 @@ g++ -std=c++17 -I. -O2 -o software_cpu main.cpp
 | RET    | 0xF | PC=LR |
 
 ### Addressing Modes
-| Mode | Bits | Syntax | Meaning |
-|------|------|--------|---------|
-| REG  | 00   | Rn     | Value in register |
-| IMM  | 01   | #n     | Literal value (0-63) |
-| DIRECT | 10 | [n]  | mem[n] |
-| INDIRECT | 11 | [Rn] | mem[Rn] |
+| Mode     | Bits | Syntax | Meaning |
+|----------|------|--------|---------|
+| REG      | 00   | Rn     | Value in register |
+| IMM      | 01   | #n     | Literal value (0-63) |
+| DIRECT   | 10   | [n]    | mem[n] |
+| INDIRECT | 11   | [Rn]   | mem[Rn] |
 
 ### Memory Map
 ```
@@ -105,3 +108,9 @@ RESOLVE: REG→R[src] | IMM→src | DIRECT→mem[src] | INDIRECT→mem[R[src]]
 EXECUTE: ALU computes | memory accessed | PC changes
 WRITEBK: result→register | result→memory
 ```
+
+## C++ Implementation Notes
+
+- Header-only design — each module is a single `.h` file
+- Classes with constructors, operator overloading, and STL (`std::map`, `std::string`, `std::vector`)
+- Requires C++17 (`-std=c++17`)
