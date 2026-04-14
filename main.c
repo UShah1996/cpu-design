@@ -144,7 +144,7 @@ void demo_fibonacci(void) {
     mem.ram[pc++] = INS(OP_LOAD, 7, MODE_DIRECT, 2);
     mem.ram[pc++] = INS(OP_JMP,  0, MODE_REG,    7);
 
-    cpu_run(&cpu, 2000);
+    cpu_run(&cpu, 1000);
     printf("\nFibonacci at 0x%04X:\n  ", DATA_START);
     for (i = 0; i < 10; i++) printf("%d ", (int)mem.ram[DATA_START+i]);
     printf("\n  Expected: 0 1 1 2 3 5 8 13 21 34\n");
