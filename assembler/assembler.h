@@ -27,7 +27,7 @@
 #define ASSEMBLER_H
 
 #include "../isa/isa.h"
-#include "memory.h"
+#include "../emulator/memory.h"
 
 /* ── Limits ─────────────────────────────────────────────────*/
 #define MAX_LABELS        256
