@@ -4,3 +4,5 @@ software_cpu_c
 .DS_Store
 software_cpu
 .vscode/
+out_c.txt
+out_cpp.txt
