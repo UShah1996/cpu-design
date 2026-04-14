@@ -1,13 +1,16 @@
-CXX      = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -I.
-TARGET   = software_cpu
+CC      = gcc
+CFLAGS  = -std=c99 -Wall -Wextra -O2 -I.
+TARGET  = software_cpu_c
 
-SRCS = main.cpp
+SRCS = main.c \
+       emulator/memory.c \
+       emulator/cpu.c \
+       assembler/assembler.c
 
 all: $(TARGET)
 
-$(TARGET): $(SRCS)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(SRCS)
+$(TARGET): $(SRCS) isa/isa.h emulator/memory.h emulator/cpu.h assembler/assembler.h
+	$(CC) $(CFLAGS) -o $(TARGET) $(SRCS)
 
 clean:
 	rm -f $(TARGET)
@@ -21,13 +24,16 @@ run-timer: $(TARGET)
 run-hello: $(TARGET)
 	./$(TARGET) 2
 
-run-fibonacci: $(TARGET)
+run-fib: $(TARGET)
 	./$(TARGET) 3
 
 run-factorial: $(TARGET)
 	./$(TARGET) 4
 
-run-memory: $(TARGET)
+run-map: $(TARGET)
 	./$(TARGET) 5
 
-.PHONY: all clean run run-timer run-hello run-fibonacci run-factorial run-memory
+run-asm: $(TARGET)
+	./$(TARGET) 6
+
+.PHONY: all clean run run-timer run-hello run-fib run-factorial run-map run-asm
