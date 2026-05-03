@@ -1,106 +1,143 @@
 /*
- * ============================================================
+ * =============================================================================
  * CMPE-220 Software CPU — Memory Subsystem Implementation
- * ============================================================
+ * =============================================================================
+ *
+ * This file implements the memory bus. All CPU reads and writes pass through
+ * mem_read() / mem_write(), which intercept I/O addresses before touching RAM.
+ *
+ * The key insight is that I/O "registers" share the same address space as RAM.
+ * Writing to 0x0FC0 (IO_STDOUT) prints a character — it doesn't store to RAM.
+ * This is called Memory-Mapped I/O (MMIO) and is used in real CPUs.
+ *
+ * =============================================================================
  */
 
 #include "memory.h"
 #include <stdio.h>    /* printf, putchar, getchar, fprintf */
-#include <string.h>   /* memset */
-#include <stdlib.h>   /* exit */
+#include <string.h>   /* memset                            */
+#include <stdlib.h>   /* exit                              */
 
-/* ── Initialize memory to all zeros ──────────────────────────
- * In C++ this would be a constructor.
- * In C we use an explicit init function.
+/* ── mem_init ────────────────────────────────────────────────────────────────
+ * Zero-initialize the entire memory array and reset the hardware timer.
+ * Always call this before loading a program or running the CPU.
  */
 void mem_init(Memory* m) {
-    memset(m->ram, 0, sizeof(m->ram));   /* zero every byte */
-    m->timer_ticks = 0;
+    memset(m->ram, 0, sizeof(m->ram));   /* clear all 4096 words */
+    m->timer_ticks = 0;                  /* reset hardware timer  */
 }
 
-/* ── Read a word from address ─────────────────────────────────
+/* ── mem_read ─────────────────────────────────────────────────────────────────
+ * Read one 16-bit word from the given address.
  *
- * This is called every time the CPU fetches an instruction OR
- * executes a LOAD instruction. The memory bus read operation.
+ * This is called:
+ *   - Every time the CPU fetches an instruction (FETCH phase)
+ *   - Every time a LOAD instruction executes with DIRECT or INDIRECT mode
+ *   - Every time the Control Unit resolves a branch target from the pool
  *
- * For normal addresses: return ram[addr]
- * For I/O addresses:    interact with the device instead
+ * Address routing:
+ *   IO_TIMER (0x0FC2) → return current timer tick count
+ *   IO_STDIN (0x0FC1) → block and read one character from the keyboard
+ *   Anything else     → return ram[addr] (normal RAM access)
  */
 Word mem_read(Memory* m, Address addr) {
+    /* Guard: catch out-of-bounds accesses before they corrupt memory */
     if (addr >= MEM_SIZE) {
-        fprintf(stderr, "[MEMORY] ERROR: read out of bounds at 0x%04X\n", addr);
+        fprintf(stderr, "[MEMORY] ERROR: read out-of-bounds at 0x%04X\n", addr);
         exit(1);
     }
 
-    /* --- Memory-mapped I/O read side --- */
+    /* Memory-Mapped I/O — timer */
     if (addr == IO_TIMER) {
-        return m->timer_ticks;          /* return current timer value */
+        return m->timer_ticks;          /* hardware counter value */
     }
+
+    /* Memory-Mapped I/O — keyboard input */
     if (addr == IO_STDIN) {
-        int c = getchar();              /* block waiting for keyboard */
+        int c = getchar();              /* blocks until user presses Enter */
         return (c == EOF) ? 0 : (Word)c;
     }
 
-    /* --- Normal RAM read --- */
+    /* Normal RAM read */
     return m->ram[addr];
 }
 
-/* ── Write a word to address ──────────────────────────────────
+/* ── mem_write ────────────────────────────────────────────────────────────────
+ * Write one 16-bit word to the given address.
  *
- * Called by STORE instructions and by the assembler loading code.
- * For I/O addresses, writing triggers device action instead of
- * modifying RAM.
+ * This is called by:
+ *   - STORE instructions in the CPU
+ *   - The assembler loader (mem_load_program, asm_apply_pool)
+ *   - CALL instruction (saves LR to the stack)
+ *
+ * Address routing:
+ *   IO_STDOUT (0x0FC0) → print low byte as an ASCII character, don't store
+ *   IO_TIMER  (0x0FC2) → reset the timer to the given value, don't store
+ *   Anything else      → store to ram[addr]
  */
 void mem_write(Memory* m, Address addr, Word value) {
     if (addr >= MEM_SIZE) {
-        fprintf(stderr, "[MEMORY] ERROR: write out of bounds at 0x%04X\n", addr);
+        fprintf(stderr, "[MEMORY] ERROR: write out-of-bounds at 0x%04X\n", addr);
         exit(1);
     }
 
-    /* --- Memory-mapped I/O write side --- */
+    /* Memory-Mapped I/O — character output */
     if (addr == IO_STDOUT) {
-        putchar((char)(value & 0xFF));  /* print low byte as ASCII */
+        putchar((char)(value & 0xFF));  /* only the low byte is printed */
         fflush(stdout);
-        return;                         /* don't write to RAM */
+        return;                         /* don't also write to RAM */
     }
+
+    /* Memory-Mapped I/O — timer reset */
     if (addr == IO_TIMER) {
-        m->timer_ticks = value;         /* reset timer */
+        m->timer_ticks = value;
         return;
     }
 
-    /* --- Normal RAM write --- */
+    /* Normal RAM write */
     m->ram[addr] = value;
 }
 
-/* ── Advance the timer (called each CPU cycle) ───────────────*/
+/* ── mem_tick ─────────────────────────────────────────────────────────────────
+ * Advance the hardware timer by one tick.
+ * Called by cpu_fetch() on every instruction fetch, so the timer tracks
+ * real CPU cycles rather than wall-clock time.
+ */
 void mem_tick(Memory* m) {
     m->timer_ticks++;
 }
 
-/* ── Load a program array into memory ────────────────────────
+/* ── mem_load_program ─────────────────────────────────────────────────────────
+ * Bulk-copy an array of assembled words into RAM.
  *
- * 'program' is an array of Words (encoded instructions).
- * 'count'   is how many words to copy.
- * 'start'   is the memory address to load them at.
+ * 'start'   : first address to write (usually CODE_START = 0x0100)
+ * 'program' : array of pre-encoded 16-bit instruction words
+ * 'count'   : number of words to copy
  *
- * This is what a bootloader does — copies code into RAM.
+ * This models what a bootloader or ROM does: copy machine code into RAM
+ * before handing control to the CPU (setting PC = start).
  */
 void mem_load_program(Memory* m, Address start, const Word* program, size_t count) {
     size_t i;
     for (i = 0; i < count; i++) {
         if (start + i >= MEM_SIZE) {
-            fprintf(stderr, "[MEMORY] ERROR: program too large\n");
+            fprintf(stderr, "[MEMORY] ERROR: program too large to fit in RAM\n");
             exit(1);
         }
         m->ram[start + i] = program[i];
     }
 }
 
-/* ── Hex dump of a memory region ─────────────────────────────
+/* ── mem_dump ─────────────────────────────────────────────────────────────────
+ * Print a formatted hex table of addresses start..end (inclusive).
  *
- * Prints a formatted table showing addresses and their contents.
- * Very useful for debugging — lets you "see inside" the CPU's memory.
- * This is what a "memory dump" means in your project spec.
+ * Each row shows three consecutive addresses so the table fits an 80-char
+ * terminal. This is the "memory dump" shown in the project demos — it lets
+ * you verify that results were written to the correct locations.
+ *
+ * Example output:
+ *   |  ADDR   |   +0    |   +1    |   +2    |
+ *   |  0800   |  0000   |  0001   |  0001   |
  */
 void mem_dump(const Memory* m, Address start, Address end) {
     Address a;
@@ -121,7 +158,11 @@ void mem_dump(const Memory* m, Address start, Address end) {
     printf("+---------+---------+---------+---------+\n\n");
 }
 
-/* ── Dump only non-zero memory (useful for seeing results) ───*/
+/* ── mem_dump_nonzero ─────────────────────────────────────────────────────────
+ * Print a compact list of all non-zero memory locations.
+ * Useful for a quick sanity check after running a program — if a location
+ * that should have been written still shows zero, something went wrong.
+ */
 void mem_dump_nonzero(const Memory* m) {
     Address a;
     printf("\n=== Non-zero memory ===\n");

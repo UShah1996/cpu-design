@@ -99,7 +99,7 @@ static int pool_alloc(PoolTable*pt,const char*name,Word addr){
     i=pt->count++;
     pt->entries[i].slot=pt->next_free++;
     pt->entries[i].value=addr;
-    strncpy(pt->entries[i].name,name,MAX_LABEL_LEN-1);
+    memcpy(pt->entries[i].name,name,MAX_LABEL_LEN-1); pt->entries[i].name[MAX_LABEL_LEN-1] = 0;
     pt->entries[i].name[MAX_LABEL_LEN-1]='\0';
     return pt->entries[i].slot;
 }
@@ -267,7 +267,7 @@ AsmProgramEx asm_assemble_ex(const char*source,Address load_addr,int pool_slots_
              if(!strcmp(tl.tokens[ti],".ORG")&&tl.count>ti+1){int ok2;addr=(Address)resolve_token(tl.tokens[ti+1],&labels,&ok2);}
              if(!strcmp(tl.tokens[ti],".DATA")&&tl.count>ti+1){
                  int ok2; Word w=(Word)resolve_token(tl.tokens[ti+1],&labels,&ok2);
-                 if(word_count<MAX_PROGRAM)words[word_count++]=w; addr++;
+                 if(word_count<MAX_PROGRAM){words[word_count++]=w;} addr++;
              }
              continue;
          }
@@ -290,7 +290,7 @@ AsmProgramEx asm_assemble_ex(const char*source,Address load_addr,int pool_slots_
     /* Fill output */
     memcpy(ex.base.words,words,word_count*sizeof(Word));
     ex.base.count=word_count; ex.base.labels=labels; ex.base.ok=ok_flag;
-    if(!ok_flag) strncpy(ex.base.error,err_msg,sizeof(ex.base.error)-1);
+    if(!ok_flag){memcpy(ex.base.error,err_msg,sizeof(ex.base.error)-1); ex.base.error[sizeof(ex.base.error)-1] = 0;}
     for(i=0;i<pool.count;i++){ex.pool_entries[i].slot=pool.entries[i].slot;ex.pool_entries[i].value=pool.entries[i].value;}
     ex.pool_count=pool.count;
     return ex;
