@@ -252,10 +252,10 @@ When a program runs, the emulator lays out memory like this:
 
 | Member | Contributions |
 |--------|--------------|
-| Member 1 | Designed ISA (`isa/isa.h`): opcodes, instruction encoding, memory map, flag semantics. Wrote CPU schematic. |
-| Member 2 | Implemented CPU emulator (`emulator/cpu.c`, `emulator/cpu.h`): Fetch/Decode/Execute pipeline, ALU, flag updates, CALL/RET, trace output. |
-| Member 3 | Implemented memory subsystem (`emulator/memory.c`, `emulator/memory.h`): RAM, memory-mapped I/O, hex dump. Wrote Timer and Hello World programs. |
-| Member 4 | Implemented two-pass assembler (`assembler/assembler.c`, `assembler/assembler.h`): tokenizer, label table, constant pool, instruction encoding. Wrote Fibonacci and Factorial assembly programs. Integrated all demos in `main.c`. |
+| Anusha Subramanian | Designed ISA (`isa/isa.h`): opcodes, instruction encoding, memory map, flag semantics. Wrote CPU schematic. |
+| Ekjot Singh | Implemented CPU emulator (`emulator/cpu.c`, `emulator/cpu.h`): Fetch/Decode/Execute pipeline, ALU, flag updates, CALL/RET, trace output. |
+| Niveditha Kamath | Implemented memory subsystem (`emulator/memory.c`, `emulator/memory.h`): RAM, memory-mapped I/O, hex dump. Wrote Timer and Hello World programs. |
+| Urmi Shah | Implemented two-pass assembler (`assembler/assembler.c`, `assembler/assembler.h`): tokenizer, label table, constant pool, instruction encoding. Wrote Fibonacci and Factorial assembly programs. Integrated all demos in `main.c`. |
 
 ---
 
